@@ -4,7 +4,6 @@ use std::io;
 use chrono::{DateTime, Utc};
 use rand::{CryptoRng, Rng};
 
-use crate::armor;
 use crate::composed::key::{PublicKey, PublicSubkey};
 use crate::composed::signed_key::{SignedKeyDetails, SignedPublicSubKey};
 use crate::crypto::hash::HashAlgorithm;
@@ -13,6 +12,7 @@ use crate::errors::Result;
 use crate::packet::{self, write_packet, SignatureType};
 use crate::ser::Serialize;
 use crate::types::{KeyId, KeyTrait, Mpi, PublicKeyTrait, SecretKeyRepr, SecretKeyTrait};
+use crate::{armor, SignedPublicKey};
 
 /// Represents a secret signed PGP key.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -124,6 +124,23 @@ impl SignedSecretKey {
 
     pub fn to_armored_string(&self, headers: Option<&BTreeMap<String, String>>) -> Result<String> {
         Ok(::std::str::from_utf8(&self.to_armored_bytes(headers)?)?.to_string())
+    }
+
+    pub fn signed_public_key(&self) -> Result<SignedPublicKey> {
+        let mut public_subkeys = self.public_subkeys.clone();
+
+        let secret_subkeys = self.secret_subkeys.iter().map(|subkey| SignedPublicSubKey {
+            key: subkey.key.public_key(),
+            signatures: subkey.signatures.clone(),
+        });
+
+        public_subkeys.extend(secret_subkeys);
+
+        Ok(SignedPublicKey {
+            primary_key: self.primary_key.public_key(),
+            details: self.details.clone(),
+            public_subkeys,
+        })
     }
 }
 

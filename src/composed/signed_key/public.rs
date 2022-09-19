@@ -159,6 +159,7 @@ pub struct SignedPublicSubKey {
 
 impl SignedPublicSubKey {
     pub fn new(key: packet::PublicSubkey, mut signatures: Vec<packet::Signature>) -> Self {
+        println!("{:?}", signatures);
         signatures.retain(|sig| {
             if sig.typ() != SignatureType::SubkeyBinding
                 && sig.typ() != SignatureType::SubkeyRevocation
