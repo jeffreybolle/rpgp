@@ -96,11 +96,24 @@ impl SecretSubkey {
             ),
         ];
 
+        let mut unhashed_sub_packets = vec![Subpacket::Issuer(sec_key.key_id())];
+
+        if self.keyflags.sign() {
+            let config = SignatureConfigBuilder::default()
+                .typ(SignatureType::KeyBinding)
+                .pub_alg(sec_key.algorithm())
+                .unhashed_subpackets(vec![])
+                .hashed_subpackets(vec![])
+                .build()?;
+            let signature = config.sign_key_binding(&key, key_pw.clone(), &sec_key)?;
+            unhashed_sub_packets.push(Subpacket::EmbeddedSignature(Box::new(signature)));
+        }
+
         let config = SignatureConfigBuilder::default()
             .typ(SignatureType::SubkeyBinding)
             .pub_alg(sec_key.algorithm())
             .hashed_subpackets(hashed_subpackets)
-            .unhashed_subpackets(vec![Subpacket::Issuer(sec_key.key_id())])
+            .unhashed_subpackets(unhashed_sub_packets)
             .build()?;
         let signatures = vec![config.sign_key_binding(sec_key, key_pw, &key)?];
 
