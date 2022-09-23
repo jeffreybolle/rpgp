@@ -1,4 +1,4 @@
-use chrono::{self, SubsecRound};
+use chrono::{self, DateTime, SubsecRound, Utc};
 use smallvec::SmallVec;
 
 use crate::composed::SignedKeyDetails;
@@ -46,7 +46,12 @@ impl KeyDetails {
         }
     }
 
-    pub fn sign<F>(self, key: &impl SecretKeyTrait, key_pw: F) -> Result<SignedKeyDetails>
+    pub fn sign<F>(
+        self,
+        key: &impl SecretKeyTrait,
+        key_pw: F,
+        datetime: DateTime<Utc>,
+    ) -> Result<SignedKeyDetails>
     where
         F: (FnOnce() -> String) + Clone,
     {
@@ -63,7 +68,7 @@ impl KeyDetails {
             let id = self.primary_user_id;
             let mut hashed_subpackets = vec![
                 Subpacket::IsPrimary(true),
-                Subpacket::SignatureCreationTime(chrono::Utc::now().trunc_subsecs(0)),
+                Subpacket::SignatureCreationTime(datetime.trunc_subsecs(0)),
                 Subpacket::KeyFlags(keyflags.clone()),
                 Subpacket::PreferredSymmetricAlgorithms(preferred_symmetric_algorithms.clone()),
                 Subpacket::PreferredHashAlgorithms(preferred_hash_algorithms.clone()),

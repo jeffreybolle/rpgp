@@ -1,6 +1,6 @@
 use std::io;
 
-use chrono::{self, SubsecRound};
+use chrono::{self, DateTime, SubsecRound, Utc};
 use rand::{CryptoRng, Rng};
 use smallvec::SmallVec;
 
@@ -37,12 +37,17 @@ impl PublicKey {
         }
     }
 
-    pub fn sign<F>(self, sec_key: &impl SecretKeyTrait, key_pw: F) -> Result<SignedPublicKey>
+    pub fn sign<F>(
+        self,
+        sec_key: &impl SecretKeyTrait,
+        key_pw: F,
+        datetime: DateTime<Utc>,
+    ) -> Result<SignedPublicKey>
     where
         F: (FnOnce() -> String) + Clone,
     {
         let primary_key = self.primary_key;
-        let details = self.details.sign(sec_key, key_pw.clone())?;
+        let details = self.details.sign(sec_key, key_pw.clone(), datetime)?;
         let public_subkeys = self
             .public_subkeys
             .into_iter()

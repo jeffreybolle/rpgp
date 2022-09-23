@@ -190,11 +190,10 @@ impl SecretKeyParams {
                 .into_iter()
                 .map(|subkey| {
                     let passphrase = subkey.passphrase;
-                    let (public_params, secret_params) =
-                        match subkey.key_material {
-                            Some(key_material) => key_material,
-                            None => self.key_type.generate_with_rng(rng, passphrase)?,
-                        };
+                    let (public_params, secret_params) = match subkey.key_material {
+                        Some(key_material) => key_material,
+                        None => self.key_type.generate_with_rng(rng, passphrase)?,
+                    };
                     let mut keyflags = KeyFlags::default();
                     keyflags.set_certify(subkey.can_create_certificates);
                     keyflags.set_encrypt_comms(subkey.can_encrypt);

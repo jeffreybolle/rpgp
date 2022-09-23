@@ -1,4 +1,3 @@
-use chrono::{self, SubsecRound};
 use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, PublicSubkey, SignedSecretKey, SignedSecretSubKey};
@@ -6,6 +5,7 @@ use crate::crypto::PublicKeyAlgorithm;
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, SignatureConfigBuilder, SignatureType, Subpacket};
 use crate::types::{KeyId, KeyTrait, SecretKeyTrait};
+use chrono::{DateTime, SubsecRound, Utc};
 
 /// User facing interface to work with a secret key.
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -37,12 +37,12 @@ impl SecretKey {
         }
     }
 
-    pub fn sign<F>(self, key_pw: F) -> Result<SignedSecretKey>
+    pub fn sign<F>(self, key_pw: F, datetime: DateTime<Utc>) -> Result<SignedSecretKey>
     where
         F: (FnOnce() -> String) + Clone,
     {
         let primary_key = self.primary_key;
-        let details = self.details.sign(&primary_key, key_pw.clone())?;
+        let details = self.details.sign(&primary_key, key_pw.clone(), datetime)?;
         let public_subkeys = self
             .public_subkeys
             .into_iter()
@@ -51,7 +51,7 @@ impl SecretKey {
         let secret_subkeys = self
             .secret_subkeys
             .into_iter()
-            .map(|k| k.sign(&primary_key, key_pw.clone()))
+            .map(|k| k.sign(&primary_key, key_pw.clone(), datetime))
             .collect::<Result<Vec<_>>>()?;
 
         Ok(SignedSecretKey {
@@ -82,13 +82,18 @@ impl SecretSubkey {
         SecretSubkey { key, keyflags }
     }
 
-    pub fn sign<F>(self, sec_key: &impl SecretKeyTrait, key_pw: F) -> Result<SignedSecretSubKey>
+    pub fn sign<F>(
+        self,
+        sec_key: &impl SecretKeyTrait,
+        key_pw: F,
+        datetime: DateTime<Utc>,
+    ) -> Result<SignedSecretSubKey>
     where
         F: (FnOnce() -> String) + Clone,
     {
         let key = self.key;
         let hashed_subpackets = vec![
-            Subpacket::SignatureCreationTime(chrono::Utc::now().trunc_subsecs(0)),
+            Subpacket::SignatureCreationTime(datetime.trunc_subsecs(0)),
             Subpacket::KeyFlags(self.keyflags.into()),
             Subpacket::IssuerFingerprint(
                 Default::default(),
