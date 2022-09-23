@@ -56,6 +56,9 @@ pub struct SecretKeyParams {
 
     #[builder(default)]
     subkeys: Vec<SubkeyParams>,
+
+    #[builder(default)]
+    key_material: Option<(PublicParams, types::SecretParams)>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Builder)]
@@ -85,6 +88,9 @@ pub struct SubkeyParams {
     version: types::KeyVersion,
     #[builder(default)]
     expiration: Option<Duration>,
+
+    #[builder(default)]
+    key_material: Option<(PublicParams, types::SecretParams)>,
 }
 
 impl SecretKeyParamsBuilder {
@@ -142,7 +148,10 @@ impl SecretKeyParams {
 
     pub fn generate_with_rng<R: Rng + CryptoRng>(self, rng: &mut R) -> Result<SecretKey> {
         let passphrase = self.passphrase;
-        let (public_params, secret_params) = self.key_type.generate_with_rng(rng, passphrase)?;
+        let (public_params, secret_params) = match self.key_material {
+            Some(key_material) => key_material,
+            None => self.key_type.generate_with_rng(rng, passphrase)?,
+        };
         let primary_key = packet::SecretKey {
             details: packet::PublicKey {
                 packet_version: self.packet_version,
@@ -182,7 +191,10 @@ impl SecretKeyParams {
                 .map(|subkey| {
                     let passphrase = subkey.passphrase;
                     let (public_params, secret_params) =
-                        subkey.key_type.generate_with_rng(rng, passphrase)?;
+                        match subkey.key_material {
+                            Some(key_material) => key_material,
+                            None => self.key_type.generate_with_rng(rng, passphrase)?,
+                        };
                     let mut keyflags = KeyFlags::default();
                     keyflags.set_certify(subkey.can_create_certificates);
                     keyflags.set_encrypt_comms(subkey.can_encrypt);
