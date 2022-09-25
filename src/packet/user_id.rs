@@ -1,6 +1,7 @@
 use std::{fmt, io, str};
 
 use chrono::{SubsecRound, Utc};
+use crate::crypto::HashAlgorithm;
 
 use crate::errors::Result;
 use crate::packet::{PacketTrait, Signature, SignatureConfigBuilder, SignatureType, Subpacket};
@@ -42,6 +43,7 @@ impl UserId {
         let config = SignatureConfigBuilder::default()
             .typ(SignatureType::CertGeneric)
             .pub_alg(key.algorithm())
+            .hash_alg(HashAlgorithm::SHA2_512) // TODO use preferred hashing algo
             .hashed_subpackets(vec![Subpacket::SignatureCreationTime(
                 Utc::now().trunc_subsecs(0),
             )])

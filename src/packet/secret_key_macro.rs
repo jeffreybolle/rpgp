@@ -138,6 +138,7 @@ macro_rules! impl_secret_key {
 
                 config
                     .pub_alg(key.algorithm())
+                    .hash_alg(crate::crypto::hash::HashAlgorithm::SHA2_512) // TODO use preferred hashing algo
                     .hashed_subpackets(vec![$crate::packet::Subpacket::SignatureCreationTime(
                         chrono::Utc::now().trunc_subsecs(0),
                     )])

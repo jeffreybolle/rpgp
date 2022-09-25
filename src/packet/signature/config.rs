@@ -129,8 +129,8 @@ impl SignatureConfig {
         Ok(Signature::from_config(self, signed_hash_value, signature))
     }
 
-    /// Sign a key binding.
-    pub fn sign_key_binding<F>(
+    /// Sign a subkey binding.
+    pub fn sign_subkey_binding<F>(
         self,
         signing_key: &impl SecretKeyTrait,
         key_pw: F,
@@ -161,7 +161,38 @@ impl SignatureConfig {
 
         Ok(Signature::from_config(self, signed_hash_value, signature))
     }
+    /// Sign a key binding (back sign).
+    pub fn sign_key_binding<F>(
+        self,
+        signing_key: &impl SecretKeyTrait,
+        key_pw: F,
+        key: &impl PublicKeyTrait,
+    ) -> Result<Signature>
+    where
+        F: FnOnce() -> String,
+    {
+        debug!(
+            "signing key binding: {:#?} - {:#?} - {:#?}",
+            self, signing_key, key
+        );
 
+        let mut hasher = self.hash_alg.new_hasher()?;
+
+        // Key being bound
+        key.to_writer_old(&mut hasher)?;
+
+        // Signing Key
+        signing_key.to_writer_old(&mut hasher)?;
+
+        let len = self.hash_signature_data(&mut *hasher)?;
+        hasher.update(&self.trailer(len));
+
+        let hash = &hasher.finish()[..];
+        let signed_hash_value = [hash[0], hash[1]];
+        let signature = signing_key.create_signature(key_pw, self.hash_alg, hash)?;
+
+        Ok(Signature::from_config(self, signed_hash_value, signature))
+    }
     /// Signs a direct key signature or a revocation.
     pub fn sign_key<F>(
         self,

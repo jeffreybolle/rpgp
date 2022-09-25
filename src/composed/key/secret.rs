@@ -1,7 +1,7 @@
 use smallvec::SmallVec;
 
 use crate::composed::{KeyDetails, PublicSubkey, SignedSecretKey, SignedSecretSubKey};
-use crate::crypto::PublicKeyAlgorithm;
+use crate::crypto::{HashAlgorithm, PublicKeyAlgorithm};
 use crate::errors::Result;
 use crate::packet::{self, KeyFlags, SignatureConfigBuilder, SignatureType, Subpacket};
 use crate::types::{KeyId, KeyTrait, SecretKeyTrait};
@@ -101,26 +101,36 @@ impl SecretSubkey {
             ),
         ];
 
-        let mut unhashed_sub_packets = vec![Subpacket::Issuer(sec_key.key_id())];
+        let mut unhashed_sub_packets = vec![];
 
         if self.keyflags.sign() {
             let config = SignatureConfigBuilder::default()
                 .typ(SignatureType::KeyBinding)
                 .pub_alg(sec_key.algorithm())
-                .unhashed_subpackets(vec![])
-                .hashed_subpackets(vec![])
+                .hash_alg(HashAlgorithm::SHA2_512) // TODO use preferred hashing algo
+                .hashed_subpackets(vec![
+                    Subpacket::IssuerFingerprint(
+                        Default::default(),
+                        SmallVec::from_slice(&key.fingerprint()),
+                    ),
+                    Subpacket::SignatureCreationTime(datetime.trunc_subsecs(0)),
+                ])
+                .unhashed_subpackets(vec![Subpacket::Issuer(key.key_id())])
                 .build()?;
             let signature = config.sign_key_binding(&key, key_pw.clone(), &sec_key)?;
             unhashed_sub_packets.push(Subpacket::EmbeddedSignature(Box::new(signature)));
         }
 
+        unhashed_sub_packets.push(Subpacket::Issuer(sec_key.key_id()));
+
         let config = SignatureConfigBuilder::default()
             .typ(SignatureType::SubkeyBinding)
             .pub_alg(sec_key.algorithm())
+            .hash_alg(HashAlgorithm::SHA2_512) // TODO use preferred hashing algo
             .hashed_subpackets(hashed_subpackets)
             .unhashed_subpackets(unhashed_sub_packets)
             .build()?;
-        let signatures = vec![config.sign_key_binding(sec_key, key_pw, &key)?];
+        let signatures = vec![config.sign_subkey_binding(sec_key, key_pw, &key)?];
 
         Ok(SignedSecretSubKey { key, signatures })
     }

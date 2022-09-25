@@ -112,11 +112,12 @@ impl PublicSubkey {
         let config = SignatureConfigBuilder::default()
             .typ(SignatureType::SubkeyBinding)
             .pub_alg(sec_key.algorithm())
+            .hash_alg(HashAlgorithm::SHA2_512) // TODO use preferred hashing algo
             .hashed_subpackets(hashed_subpackets)
             .unhashed_subpackets(vec![Subpacket::Issuer(sec_key.key_id())])
             .build()?;
 
-        let signatures = vec![config.sign_key_binding(sec_key, key_pw, &key)?];
+        let signatures = vec![config.sign_subkey_binding(sec_key, key_pw, &key)?];
 
         Ok(SignedPublicSubKey { key, signatures })
     }
